@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Sonora Watch Tap</title>
+  <style>
+    :root {
+      --bg: #12100e;
+      --surface: #221d19;
+      --accent: #f59e0b;
+      --accent-dim: #78350f;
+      --text: #faf6f0;
+      --muted: #a89f91;
+      --danger: #ef4444;
+      --ok: #10b981;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      overflow: hidden;
+    }
+    .screen {
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 100%;
+      height: 100%;
+      padding: 6px;
+      border: 3px solid transparent;
+      transition: border-color 0.05s linear;
+    }
+    .screen.active { display: flex; }
+    .screen.pulse { border-color: var(--accent); }
+    .screen.pulse-downbeat { border-color: #ffffff; }
+
+    /* Setup Screen */
+    .tempo-box {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 6px;
+      text-align: center;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      border: 1px solid #362e28;
+    }
+    .tempo-box:active { background: var(--accent-dim); }
+    .bpm-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 4px;
+    }
+    .bpm-val {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .adj-btn {
+      background: #2e2722;
+      color: var(--text);
+      border: none;
+      border-radius: 8px;
+      width: 30px;
+      height: 30px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .tap-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .controls-row {
+      display: flex;
+      gap: 6px;
+      margin: 6px 0;
+    }
+    .pill-btn {
+      flex: 1;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid #362e28;
+      border-radius: 10px;
+      padding: 7px 4px;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .pill-btn span {
+      display: block;
+      font-size: 9px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .primary-btn {
+      width: 100%;
+      background: var(--ok);
+      color: #062419;
+      border: none;
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    /* Record Screen */
+    .tap-pad {
+      flex: 1;
+      background: var(--surface);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      border: 2px solid #362e28;
+      margin-bottom: 6px;
+    }
+    .tap-pad.hit {
+      background: var(--accent);
+      color: #12100e;
+      border-color: #fff;
+    }
+    .big-status {
+      font-size: 40px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .sub-status {
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 6px;
+      opacity: 0.85;
+    }
+    .stop-btn {
+      width: 100%;
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    /* Result Screen */
+    .res-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      padding: 0 2px;
+    }
+    .staff-box {
+      flex: 1;
+      background: #faf6f0;
+      border-radius: 12px;
+      margin: 5px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .nav-row {
+      display: flex;
+      gap: 6px;
+    }
+    .nav-btn {
+      flex: 1;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid #362e28;
+      border-radius: 10px;
+      padding: 8px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .nav-btn.reset {
+      background: var(--accent);
+      color: #12100e;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SCREEN 1: SETUP -->
+  <div id="setup-screen" class="screen active">
+    <div id="tap-tempo-area" class="tempo-box">
+      <div class="bpm-row">
+        <button id="bpm-down" class="adj-btn">-</button>
+        <div id="bpm-display" class="bpm-val">100</div>
+        <button id="bpm-up" class="adj-btn">+</button>
+      </div>
+      <div class="tap-label">TAP HERE FOR TEMPO</div>
+    </div>
+
+    <div class="controls-row">
+      <button id="sig-btn" class="pill-btn"><span>METER</span>4/4</button>
+      <button id="grid-btn" class="pill-btn"><span>QUANTIZE</span>16th</button>
+    </div>
+
+    <button id="start-btn" class="primary-btn">START</button>
+  </div>
+
+  <!-- SCREEN 2: RECORD -->
+  <div id="record-screen" class="screen">
+    <div id="tap-pad" class="tap-pad">
+      <div id="rec-big" class="big-status">4</div>
+      <div id="rec-sub" class="sub-status">COUNT IN</div>
+    </div>
+    <button id="stop-btn" class="stop-btn">STOP & NOTATE</button>
+  </div>
+
+  <!-- SCREEN 3: NOTATION -->
+  <div id="result-screen" class="screen">
+    <div class="res-header">
+      <span id="res-meta">4/4 • 100 BPM</span>
+      <span id="measure-ind">M. 1/1</span>
+    </div>
+    <div id="staff-box" class="staff-box"></div>
+    <div class="nav-row">
+      <button id="prev-m" class="nav-btn">&lt;</button>
+      <button id="reset-btn" class="nav-btn reset">NEW</button>
+      <button id="next-m" class="nav-btn">&gt;</button>
+    </div>
+  </div>
+
+  <script>
+    // --- State ---
+    let bpm = 100;
+    const signatures = [
+      { label: "4/4", beats: 4, beatUnit: 4 },
+      { label: "3/4", beats: 3, beatUnit: 4 },
+      { label: "2/4", beats: 2, beatUnit: 4 },
+      { label: "6/8", beats: 6, beatUnit: 8 },
+      { label: "5/4", beats: 5, beatUnit: 4 }
+    ];
+    let sigIdx = 0;
+
+    const grids = [
+      { label: "16th", subPerQuarter: 4 },
+      { label: "32nd", subPerQuarter: 8 },
+      { label: "8th", subPerQuarter: 2 }
+    ];
+    let gridIdx = 0;
+
+    let tempoTaps = [];
+    let audioCtx = null;
+    let metroTimer = null;
+    let isRecording = false;
+    let countInLeft = 0;
+    let recordStartTime = 0;
+    let tapTimestamps = [];
+    let measuresData = [];
+    let currentMeasureIdx = 0;
+
+    // --- Elements ---
+    const setupScreen = document.getElementById("setup-screen");
+    const recordScreen = document.getElementById("record-screen");
+    const resultScreen = document.getElementById("result-screen");
+    const bpmDisplay = document.getElementById("bpm-display");
+    const sigBtn = document.getElementById("sig-btn");
+    const gridBtn = document.getElementById("grid-btn");
+    const tapPad = document.getElementById("tap-pad");
+    const recBig = document.getElementById("rec-big");
+    const recSub = document.getElementById("rec-sub");
+    const staffBox = document.getElementById("staff-box");
+    const measureInd = document.getElementById("measure-ind");
+    const resMeta = document.getElementById("res-meta");
+
+    function showScreen(el) {
+      [setupScreen, recordScreen, resultScreen].forEach(s => s.classList.remove("active"));
+      el.classList.add("active");
+    }
+
+    function playClick(high) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.value = high ? 1050 : 750;
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.045);
+      } catch (e) {}
+    }
+
+    function flashBorder(screenEl, isDownbeat) {
+      screenEl.classList.add(isDownbeat ? "pulse-downbeat" : "pulse");
+      setTimeout(() => {
+        screenEl.classList.remove("pulse", "pulse-downbeat");
+      }, 90);
+    }
+
+    // --- Setup Interactions ---
+    document.getElementById("bpm-down").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      bpm = Math.max(40, bpm - 1);
+      bpmDisplay.textContent = bpm;
+    });
+
+    document.getElementById("bpm-up").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      bpm = Math.min(240, bpm + 1);
+      bpmDisplay.textContent = bpm;
+    });
+
+    document.getElementById("tap-tempo-area").addEventListener("pointerdown", () => {
+      const now = performance.now();
+      if (tempoTaps.length > 0 && now - tempoTaps[tempoTaps.length - 1] > 2000) {
+        tempoTaps = [];
+      }
+      tempoTaps.push(now);
+      if (tempoTaps.length > 5) tempoTaps.shift();
+      playClick(true);
+      flashBorder(setupScreen, true);
+      if (tempoTaps.length >= 2) {
+        let sum = 0;
+        for (let i = 1; i < tempoTaps.length; i++) {
+          sum += tempoTaps[i] - tempoTaps[i - 1];
+        }
+        const avgMs = sum / (tempoTaps.length - 1);
+        bpm = Math.min(240, Math.max(40, Math.round(60000 / avgMs)));
+        bpmDisplay.textContent = bpm;
+      }
+    });
+
+    sigBtn.addEventListener("pointerdown", () => {
+      sigIdx = (sigIdx + 1) % signatures.length;
+      sigBtn.innerHTML = `<span>METER</span>${signatures[sigIdx].label}`;
+    });
+
+    gridBtn.addEventListener("pointerdown", () => {
+      gridIdx = (gridIdx + 1) % grids.length;
+      gridBtn.innerHTML = `<span>QUANTIZE</span>${grids[gridIdx].label}`;
+    });
+
+    // --- Recording & Metronome ---
+    document.getElementById("start-btn").addEventListener("pointerdown", () => {
+      showScreen(recordScreen);
+      tapTimestamps = [];
+      isRecording = false;
+      const sig = signatures[sigIdx];
+      // Quarter note ms; for 6/8, pulse in eighth-note beats
+      const beatMs = sig.beatUnit === 8 ? (60000 / bpm) / 2 : (60000 / bpm);
+      countInLeft = sig.beats;
+      let beatCounter = 0;
+
+      function tick() {
+        const isDownbeat = (beatCounter % sig.beats) === 0;
+        playClick(isDownbeat);
+        flashBorder(recordScreen, isDownbeat);
+
+        if (beatCounter < sig.beats) {
+          recBig.textContent = beatCounter + 1;
+          recSub.textContent = "COUNT IN";
+        } else {
+          if (!isRecording) {
+            isRecording = true;
+            recordStartTime = performance.now();
+            recBig.textContent = "TAP";
+            recSub.textContent = "RECORDING";
+          }
+          const mNum = Math.floor((beatCounter - sig.beats) / sig.beats) + 1;
+          const bNum = ((beatCounter - sig.beats) % sig.beats) + 1;
+          recBig.textContent = `${mNum}:${bNum}`;
+        }
+        beatCounter++;
+      }
+
+      tick();
+      metroTimer = setInterval(tick, beatMs);
+    });
+
+    tapPad.addEventListener("pointerdown", () => {
+      const now = performance.now();
+      tapPad.classList.add("hit");
+      setTimeout(() => tapPad.classList.remove("hit"), 80);
+
+      if (!isRecording) {
+        // Allow slightly early pickup tap right before beat 1
+        if (recordStartTime === 0) return;
+      }
+      if (isRecording) {
+        tapTimestamps.push(now - recordStartTime);
+      }
+    });
+
+    document.getElementById("stop-btn").addEventListener("pointerdown", () => {
+      clearInterval(metroTimer);
+      isRecording = false;
+      quantizeAndBuildNotation();
+      showScreen(resultScreen);
+    });
+
+    // --- Quantization & Decomposition Engine ---
+    function quantizeAndBuildNotation() {
+      const sig = signatures[sigIdx];
+      const grid = grids[gridIdx];
+      // Base unit = 32nd-note ticks (1 quarter = 8 ticks)
+      const ticksPerQuarter = 8;
+      const stepTicks = ticksPerQuarter / grid.subPerQuarter; // 1 for 32nd, 2 for 16th, 4 for 8th
+      const quarterMs = 60000 / bpm;
+      const tickMs = quarterMs / ticksPerQuarter;
+      const measureTicks = sig.beatUnit === 8
+        ? sig.beats * 4 // 6/8 = 24 thirty-second ticks
+        : sig.beats * 8; // 4/4 = 32 ticks
+
+      // Snap timestamps to grid ticks
+      let snappedTicks = tapTimestamps.map(ms => {
+        const rawSteps = Math.round(ms / (stepTicks * tickMs));
+        return Math.max(0, rawSteps * stepTicks);
+      });
+
+      // Deduplicate simultaneous double-taps
+      snappedTicks = [...new Set(snappedTicks)].sort((a, b) => a - b);
+
+      if (snappedTicks.length === 0) {
+        measuresData = [[{ type: "rest", ticks: measureTicks, tieNext: false }]];
+        currentMeasureIdx = 0;
+        renderMeasure();
+        return;
+      }
+
+      const lastTick = snappedTicks[snappedTicks.length - 1];
+      const totalMeasures = Math.max(1, Math.ceil((lastTick + 1) / measureTicks));
+      const totalTicks = totalMeasures * measureTicks;
+
+      // Build raw events (leading rest + notes)
+      const rawEvents = [];
+      if (snappedTicks[0] > 0) {
+        rawEvents.push({ type: "rest", start: 0, dur: snappedTicks[0] });
+      }
+      for (let i = 0; i < snappedTicks.length; i++) {
+        const start = snappedTicks[i];
+        const end = i < snappedTicks.length - 1 ? snappedTicks[i + 1] : totalTicks;
+        if (end > start) {
+          rawEvents.push({ type: "note", start, dur: end - start });
+        }
+      }
+
+      // Split across measure boundaries and decompose into standard rhythmic values
+      measuresData = Array.from({ length: totalMeasures }, () => []);
+
+      rawEvents.forEach(ev => {
+        let pos = ev.start;
+        let rem = ev.dur;
+        while (rem > 0) {
+          const mIndex = Math.floor(pos / measureTicks);
+          if (mIndex >= totalMeasures) break;
+          const mEnd = (mIndex + 1) * measureTicks;
+          const chunk = Math.min(rem, mEnd - pos);
+          const pieces = decomposeTicks(chunk);
+          pieces.forEach((pTicks, idx) => {
+            const isLastPieceOverall = (rem - chunk === 0) && (idx === pieces.length - 1);
+            measuresData[mIndex].push({
+              type: ev.type,
+              ticks: pTicks,
+              tieNext: ev.type === "note" && !isLastPieceOverall
+            });
+          });
+          pos += chunk;
+          rem -= chunk;
+        }
+      });
+
+      currentMeasureIdx = 0;
+      renderMeasure();
+    }
+
+    // Greedy decomposition into standard dotted & plain note lengths (in 32nd-note ticks)
+    function decomposeTicks(ticks) {
+      const standard = [32, 24, 16, 12, 8, 6, 4, 3, 2, 1];
+      const out = [];
+      let rem = ticks;
+      while (rem > 0) {
+        const found = standard.find(v => v <= rem) || 1;
+        out.push(found);
+        rem -= found;
+      }
+      return out;
+    }
+
+    // --- SVG Rhythm Renderer ---
+    function renderMeasure() {
+      const sig = signatures[sigIdx];
+      resMeta.textContent = `${sig.label} • ${bpm} BPM`;
+      measureInd.textContent = `M. ${currentMeasureIdx + 1}/${measuresData.length}`;
+
+      const items = measuresData[currentMeasureIdx] || [];
+      const w = 180;
+      const h = 92;
+      const lineY = 54;
+      const padL = 16;
+      const padR = 14;
+      const usableW = w - padL - padR;
+
+      const totalTicks = items.reduce((s, it) => s + it.ticks, 0) || 1;
+      let cursorTicks = 0;
+
+      let svg = `<svg viewBox="0 0 ${w} ${h}" width="100%" height="100%">`;
+      // Single percussion rhythm line + barlines
+      svg += `<line x1="8" y1="${lineY}" x2="${w - 8}" y2="${lineY}" stroke="#44403c" stroke-width="1.5"/>`;
+      svg += `<line x1="8" y1="${lineY - 14}" x2="8" y2="${lineY + 14}" stroke="#1c1917" stroke-width="2"/>`;
+      svg += `<line x1="${w - 8}" y1="${lineY - 14}" x2="${w - 8}" y2="${lineY + 14}" stroke="#1c1917" stroke-width="2.5"/>`;
+
+      const coords = [];
+
+      items.forEach((item, idx) => {
+        const x = padL + (cursorTicks / totalTicks) * usableW + 6;
+        coords.push({ x, item });
+
+        const baseTicks = getBaseTicks(item.ticks);
+        const isDotted = item.ticks !== baseTicks;
+
+        if (item.type === "note") {
+          const isOpen = baseTicks >= 16; // half or whole
+          const hasStem = baseTicks < 32;
+          svg += `<ellipse cx="${x}" cy="${lineY}" rx="5" ry="3.8" transform="rotate(-18 ${x} ${lineY})" fill="${isOpen ? '#faf6f0' : '#1c1917'}" stroke="#1c1917" stroke-width="1.8"/>`;
+
+          if (hasStem) {
+            const stemX = x + 4.2;
+            const stemTop = lineY - 26;
+            svg += `<line x1="${stemX}" y1="${lineY}" x2="${stemX}" y2="${stemTop}" stroke="#1c1917" stroke-width="1.6"/>`;
+
+            // Flags for 8th (4), 16th (2), 32nd (1)
+            const flags = baseTicks === 4 ? 1 : baseTicks === 2 ? 2 : baseTicks === 1 ? 3 : 0;
+            for (let f = 0; f < flags; f++) {
+              const fy = stemTop + f * 5.5;
+              svg += `<path d="M ${stemX} ${fy} Q ${stemX + 7} ${fy + 3} ${stemX + 5} ${fy + 9}" fill="none" stroke="#1c1917" stroke-width="1.6"/>`;
+            }
+          }
+
+          if (isDotted) {
+            svg += `<circle cx="${x + 9}" cy="${lineY - 4}" r="1.6" fill="#1c1917"/>`;
+          }
+        } else {
+          // Rest symbols
+          svg += drawRestSVG(x, lineY, baseTicks, isDotted);
+        }
+
+        cursorTicks += item.ticks;
+      });
+
+      // Draw ties
+      for (let i = 0; i < coords.length; i++) {
+        if (coords[i].item.tieNext) {
+          const x1 = coords[i].x + 2;
+          const x2 = (i + 1 < coords.length) ? coords[i + 1].x - 2 : w - 10;
+          const midX = (x1 + x2) / 2;
+          svg += `<path d="M ${x1} ${lineY + 6} Q ${midX} ${lineY + 15} ${x2} ${lineY + 6}" fill="none" stroke="#1c1917" stroke-width="1.4"/>`;
+        }
+      }
+
+      svg += `</svg>`;
+      staffBox.innerHTML = svg;
+    }
+
+    function getBaseTicks(ticks) {
+      if (ticks === 24) return 16;
+      if (ticks === 12) return 8;
+      if (ticks === 6) return 4;
+      if (ticks === 3) return 2;
+      return ticks;
+    }
+
+    function drawRestSVG(x, y, baseTicks, isDotted) {
+      let s = "";
+      if (baseTicks === 32) {
+        s += `<rect x="${x - 4}" y="${y - 8}" width="8" height="4" fill="#1c1917"/>`;
+      } else if (baseTicks === 16) {
+        s += `<rect x="${x - 4}" y="${y - 12}" width="8" height="4" fill="#1c1917"/>`;
+      } else if (baseTicks === 8) {
+        s += `<path d="M ${x - 2} ${y - 11} L ${x + 3} ${y - 5} L ${x - 2} ${y} L ${x + 3} ${y + 6} Q ${x - 2} ${y + 9} ${x + 1} ${y + 12}" fill="none" stroke="#1c1917" stroke-width="1.8"/>`;
+      } else {
+        // 8th / 16th / 32nd rest slashes
+        const count = baseTicks === 4 ? 1 : baseTicks === 2 ? 2 : 3;
+        s += `<line x1="${x + 3}" y1="${y - 8}" x2="${x - 2}" y2="${y + 8}" stroke="#1c1917" stroke-width="1.6"/>`;
+        for (let i = 0; i < count; i++) {
+          const cy = y - 5 + i * 5;
+          const cx = x + 1 - i * 1.2;
+          s += `<circle cx="${cx}" cy="${cy}" r="2" fill="#1c1917"/>`;
+        }
+      }
+      if (isDotted) {
+        s += `<circle cx="${x + 7}" cy="${y - 4}" r="1.6" fill="#1c1917"/>`;
+      }
+      return s;
+    }
+
+    // --- Result Navigation ---
+    document.getElementById("prev-m").addEventListener("pointerdown", () => {
+      if (currentMeasureIdx > 0) {
+        currentMeasureIdx--;
+        renderMeasure();
+      }
+    });
+
+    document.getElementById("next-m").addEventListener("pointerdown", () => {
+      if (currentMeasureIdx < measuresData.length - 1) {
+        currentMeasureIdx++;
+        renderMeasure();
+      }
+    });
+
+    document.getElementById("reset-btn").addEventListener("pointerdown", () => {
+      showScreen(setupScreen);
+    });
+  </script>
+</body>
+</html>
